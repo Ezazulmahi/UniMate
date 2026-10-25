@@ -1,29 +1,27 @@
-const express = require('express');
-require('dotenv').config();
-
-const app = express();
-const PORT = process.env.PORT || 5000;
 const mongoose = require('mongoose');
+const config = require('./src/config');
+const app = require('./src/app');
 
-mongoose.connect(process.env.MONGO_URI)
-.then(() => console.log('MongoDB Atlas connected'))
-.catch((err) => console.error('MongoDB connection error:', err));
-// Middleware
-const cors = require('cors');
-app.use(cors()); // Allow all origins (for dev)
+async function start() {
+  if (!config.mongoUri) {
+    console.error('MONGO_URI is not set. Copy .env.example to .env and fill it in.');
+    process.exit(1);
+  }
+  if (!process.env.JWT_SECRET) {
+    if (process.env.NODE_ENV === 'production') {
+      console.error('JWT_SECRET must be set in production.');
+      process.exit(1);
+    }
+    console.warn('JWT_SECRET is not set; using an insecure development secret.');
+  }
+  await mongoose.connect(config.mongoUri);
+  console.log('MongoDB connected');
+  app.listen(config.port, () => {
+    console.log(`Server running on http://localhost:${config.port}`);
+  });
+}
 
-
-// Test route
-app.get('/', (req, res) => {
-  res.send('Hello from backend!');
-});
-
-// Start server
-// GET /api/message
-app.get('/api/message', (req, res) => {
-  res.json({ message: 'Hello from backend!' });
-});
-
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+start().catch((err) => {
+  console.error('Could not start the server:', err.message);
+  process.exit(1);
 });
